@@ -1924,6 +1924,8 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 //
 //
 //
+//
+//
 // import * as _ from 'lodash';
 // import * as $ from 'backbone';
 var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/jointjs/dist/joint.js");
@@ -1948,7 +1950,7 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
       el: $("#paper"),
       width: 1200,
       height: 800,
-      gridSize: 1,
+      gridSize: 20,
       model: this.graph,
       perpendicularLinks: true,
       restrictTranslate: true
@@ -1959,16 +1961,37 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
       } //this.activeCell.cell.remove()
 
     });
+    paper.$el.on('mousewheel DOMMouseScroll', function onMouseWheel(e) {
+      //function onMouseWheel(e){
+      e.preventDefault();
+      e = e.originalEvent;
+      var delta = Math.max(-1, Math.min(1, e.wheelDelta || -e.detail)) / 50;
+      var offsetX = e.offsetX || e.clientX - $(this).offset().left;
+      var offsetY = e.offsetY || e.clientY - $(this).offset().top;
+      var p = offsetToLocalPoint(offsetX, offsetY);
+      var newScale = joint.V(paper.viewport).scale().sx + delta;
+      console.log(' delta' + delta + ' ' + 'offsetX' + offsetX + 'offsety--' + offsetY + 'p' + p.x + 'newScale' + newScale);
+
+      if (newScale > 0.1 && newScale < 2) {
+        paper.setOrigin(0, 0);
+        paper.scale(newScale, newScale, p.x, p.y);
+      }
+    });
+
+    var offsetToLocalPoint = function offsetToLocalPoint(x, y) {
+      var svgPoint = paper.svg.createSVGPoint();
+      svgPoint.x = x;
+      svgPoint.y = y;
+      var pointTransformed = svgPoint.matrixTransform(paper.viewport.getCTM().inverse());
+      return pointTransformed;
+    };
   },
   methods: {
-    link: function link(source, target, breakpoints) {
+    link: function link(source, target, direction, position) {
+      /*
       var cell = new joint.shapes.org.Arrow({
-        source: {
-          id: source.id
-        },
-        target: {
-          id: target.id
-        },
+        source: { id: source.id },
+        target: { id: target.id },
         vertices: breakpoints,
         attrs: {
           ".connection": {
@@ -1980,11 +2003,49 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
         }
       });
       this.graph.addCell(cell);
-      return cell;
+      */
+      var link = new joint.shapes.standard.Link();
+      var sourceLinkOptions = {};
+
+      if (direction === 'downward') {
+        sourceLinkOptions = {
+          anchor: {
+            name: 'bottomRight',
+            args: {
+              dx: position === 1 ? -5 : -10 * position,
+              // multiply this with offset for each instance
+              dy: -10
+            }
+          }
+        };
+      }
+
+      if (direction === 'upward') {
+        sourceLinkOptions = {
+          anchor: {
+            name: 'topRight',
+            args: {
+              dx: position === 1 ? -5 : -10 * position,
+              // multiply this with offset for each instance
+              dy: 0
+            }
+          }
+        };
+      }
+
+      link.source(source, sourceLinkOptions);
+      link.target(target);
+      link.router('metro');
+      link.connector('jumpover');
+      link.addTo(this.graph);
+      return link;
     },
-    addShape: function addShape() {
+    remove: function remove() {
+      this.activeCell.cell.remove();
+    },
+    addShape: function addShape(direction) {
       var X_OFFSET = 200;
-      var Y_OFFSET = 0;
+      var Y_OFFSET = 180;
       var x = 50;
       var y = 200;
 
@@ -1992,12 +2053,40 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
         var _this$activeCell$cell = this.activeCell.cell.attributes.position,
             previousX = _this$activeCell$cell.x,
             previousY = _this$activeCell$cell.y;
-        x = previousX + X_OFFSET;
-        y = previousY + Y_OFFSET;
+
+        if (direction === 'forward') {
+          x = previousX + X_OFFSET;
+          y = previousY;
+        }
+
+        if (direction === 'upward') {
+          var position = this.activeCell.linkUpwards.length + 1; // 0, 1, 2
+
+          if (position === 1) {
+            x = previousX + 50 * position;
+          } else {
+            x = previousX;
+          }
+
+          y = previousY - Y_OFFSET * position;
+        }
+
+        if (direction === 'downward') {
+          var _position = this.activeCell.linkDownwards.length + 1; // 0, 1, 2
+
+
+          if (_position === 1) {
+            x = previousX + 50 * _position;
+          } else {
+            x = previousX;
+          }
+
+          y = previousY + Y_OFFSET * _position;
+        }
       }
 
       var cell = new joint.shapes.basic.Rect();
-      cell.resize(100, 200);
+      cell.resize(50, 100);
       cell.position(x, y);
       cell.attr("root/title", "joint.shapes.standard.Rectangle");
       cell.attr("label/text", "Rectangle");
@@ -2014,16 +2103,29 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
       var previousCell = this.activeCell;
 
       if (previousCell) {
-        // determine which direction to link
-        previousCell.linkForwards = newCell;
-        this.link(previousCell.cell, cell);
+        var _position2 = 1; // determine which direction to link
+
+        if (direction === 'forward') {
+          previousCell.linkForwards = newCell;
+        }
+
+        if (direction === 'downward') {
+          _position2 = previousCell.linkDownwards.length + 1;
+          previousCell.linkDownwards.push(newCell);
+        }
+
+        if (direction === 'upward') {
+          _position2 = previousCell.linkUpwards.length + 1;
+          previousCell.linkUpwards.push(newCell);
+        }
+
+        this.link(previousCell.cell, cell, direction, _position2);
       }
 
       if (!this.activeCell) {
         this.rootCell = newCell;
       }
 
-      console.log(this.rootCell);
       this.activeCell = newCell;
       return cell;
     }
@@ -70450,11 +70552,46 @@ var render = function() {
   return _c("div", { staticClass: "container" }, [
     _c("div", { attrs: { id: "paper" } }),
     _vm._v(" "),
-    _c("button", { staticClass: "danger", on: { click: _vm.addShape } }, [
-      _vm._v("Add Shape")
-    ]),
+    _c(
+      "button",
+      {
+        staticClass: "danger",
+        on: {
+          click: function($event) {
+            return _vm.addShape("forward")
+          }
+        }
+      },
+      [_vm._v("Forward")]
+    ),
     _vm._v(" "),
-    _c("button", { staticClass: "warning", on: { click: _vm.addShape } }, [
+    _c(
+      "button",
+      {
+        staticClass: "danger",
+        on: {
+          click: function($event) {
+            return _vm.addShape("upward")
+          }
+        }
+      },
+      [_vm._v("Upward")]
+    ),
+    _vm._v(" "),
+    _c(
+      "button",
+      {
+        staticClass: "danger",
+        on: {
+          click: function($event) {
+            return _vm.addShape("downward")
+          }
+        }
+      },
+      [_vm._v("Downward")]
+    ),
+    _vm._v(" "),
+    _c("button", { staticClass: "warning", on: { click: _vm.remove } }, [
       _vm._v("Remove Shape")
     ])
   ])
