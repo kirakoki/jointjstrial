@@ -30,7 +30,7 @@ export default {
     var paper = new joint.dia.Paper({
       el: $("#paper"),
       width: 1200,
-      height: 600,
+      height: 800,
       gridSize: 1,
       model: this.graph,
       perpendicularLinks: true,
@@ -63,11 +63,7 @@ export default {
       return cell;
     },
     addShape() {
-      // this.objects in empty oldugu, 
-      // starting position hardcoded
-      // this.objects den son itemin x, y koordinatlarini oku
-      // yeni cell in pozisyonunu hesapla
-      // previousX + CELL_WIDTH + OFFSET
+
       const X_OFFSET = 200;
       const Y_OFFSET = 0;
       let x = 50;
@@ -85,10 +81,10 @@ export default {
       cell.attr("label/text", "Rectangle");
       cell.attr("body/fill", "lightblue");
       cell.addTo(this.graph);
-      //cell.attr['body']= red
+    
 
       this.graph.addCell(cell);
-      let newCell = { cell, linkForwards: null, linkUpwards: null, linkDownwards: null};
+      let newCell = { cell, linkForwards: null, linkUpwards: [], linkDownwards: []};
       this.cellMap = {
         [cell.id]: newCell,
         ...this.cellMap

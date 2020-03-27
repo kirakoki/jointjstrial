@@ -1947,7 +1947,7 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
     var paper = new joint.dia.Paper({
       el: $("#paper"),
       width: 1200,
-      height: 600,
+      height: 800,
       gridSize: 1,
       model: this.graph,
       perpendicularLinks: true,
@@ -1983,11 +1983,6 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
       return cell;
     },
     addShape: function addShape() {
-      // this.objects in empty oldugu, 
-      // starting position hardcoded
-      // this.objects den son itemin x, y koordinatlarini oku
-      // yeni cell in pozisyonunu hesapla
-      // previousX + CELL_WIDTH + OFFSET
       var X_OFFSET = 200;
       var Y_OFFSET = 0;
       var x = 50;
@@ -2007,14 +2002,13 @@ var joint = __webpack_require__(/*! jointjs/dist/joint.js */ "./node_modules/joi
       cell.attr("root/title", "joint.shapes.standard.Rectangle");
       cell.attr("label/text", "Rectangle");
       cell.attr("body/fill", "lightblue");
-      cell.addTo(this.graph); //cell.attr['body']= red
-
+      cell.addTo(this.graph);
       this.graph.addCell(cell);
       var newCell = {
         cell: cell,
         linkForwards: null,
-        linkUpwards: null,
-        linkDownwards: null
+        linkUpwards: [],
+        linkDownwards: []
       };
       this.cellMap = _objectSpread(_defineProperty({}, cell.id, newCell), this.cellMap);
       var previousCell = this.activeCell;
