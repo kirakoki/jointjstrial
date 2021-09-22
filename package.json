@@ -23,7 +23,7 @@
         "vue-template-compiler": "^2.6.10"
     },
     "dependencies": {
-        "jointjs": "^3.1.1",
+        "jointjs": "^3.4.2",
         "vue": "^2.6.11"
     }
 }
